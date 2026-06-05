@@ -1,97 +1,95 @@
-# src/data_cleaner.py
-
 import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
-
-
+ 
+ 
 class DataCleaner:
     """
-    DataCleaner modulare — chiama solo le funzioni che servono.
-    Aggiungi nuove funzioni man mano che incontri nuovi casi.
+    DataCleaner con pattern fit / transform.
+    Casistiche supportate:
+      - fix_missing_numerical_median   → imputa numerici con la mediana del train
+      - fix_missing_categorical_unknown → sostituisce NaN con 'unknown'
     """
-
-    def __init__(self, df: pd.DataFrame):
-        self.df = df.copy()
-
+ 
+    def __init__(self):
+        self._median_imputer = None   # SimpleImputer fittato sul train
+        self._median_cols = []        # colonne numeriche con mancanti
+        self._unknown_cols = []       # colonne categoriali da riempire con 'unknown'
+ 
     # ------------------------------------------------------------------ #
-    #  Numerici                                                            #
+    #  Configurazione (chainable)                                          #
     # ------------------------------------------------------------------ #
-
+ 
     def fix_missing_numerical_median(self) -> "DataCleaner":
-        """Imputa i numerici con la mediana."""
-        num_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
-        missing = [c for c in num_cols if self.df[c].isnull().any()]
-
-        if not missing:
-            print("[DataCleaner] Nessun mancante numerico.")
-            return self
-
-        imputer = SimpleImputer(strategy='median')
-        before = self.df[missing].isnull().sum()
-        self.df[missing] = imputer.fit_transform(self.df[missing])
-
-        print("\n--- NUMERICI → MEDIANA ---")
-        for i, col in enumerate(missing):
-            print(f"  {col:<30} {before[col]:>5} mancanti → mediana ({imputer.statistics_[i]:.2f})")
+        """Registra: imputa i numerici con la mediana del train."""
+        self._use_median = True
         return self
-
-    # ------------------------------------------------------------------ #
-    #  Categoriali                                                         #
-    # ------------------------------------------------------------------ #
-
-    def fix_missing_categorical_mode(self) -> "DataCleaner":
-        """Imputa i categoriali con la moda (best per <5% mancanti)."""
-        cat_cols = self.df.select_dtypes(exclude=[np.number]).columns.tolist()
-        missing = [c for c in cat_cols if self.df[c].isnull().any()]
-
-        if not missing:
-            print("[DataCleaner] Nessun mancante categoriale.")
-            return self
-
-        imputer = SimpleImputer(strategy='most_frequent')
-        before = self.df[missing].isnull().sum()
-        self.df[missing] = imputer.fit_transform(self.df[missing])
-
-        print("\n--- CATEGORIALI → MODA ---")
-        for i, col in enumerate(missing):
-            print(f"  {col:<30} {before[col]:>5} mancanti → moda ('{imputer.statistics_[i]}')")
-        return self
-
+ 
     def fix_missing_categorical_unknown(self, cols: list = None) -> "DataCleaner":
         """
-        Sostituisce i NaN con 'unknown' (best per >5% mancanti).
-        Preserva l'informazione che il valore mancava — può essere predittivo.
+        Registra: sostituisce NaN con 'unknown'.
         Se cols=None lo applica a tutte le categoriali con mancanti.
         """
-        cat_cols = self.df.select_dtypes(exclude=[np.number]).columns.tolist()
-        target_cols = cols if cols else [c for c in cat_cols if self.df[c].isnull().any()]
-
-        print("\n--- CATEGORIALI → 'unknown' ---")
-        for col in target_cols:
-            count = self.df[col].isnull().sum()
-            pct = count / len(self.df) * 100
-            self.df[col] = self.df[col].fillna('unknown')
-            print(f"  {col:<30} {count:>5} mancanti ({pct:.1f}%) → 'unknown'")
+        self._unknown_cols = cols or []
         return self
-
+ 
+    # ------------------------------------------------------------------ #
+    #  Fit / Transform                                                     #
+    # ------------------------------------------------------------------ #
+ 
+    def fit(self, df: pd.DataFrame) -> "DataCleaner":
+        """Impara le statistiche SOLO dal train set."""
+ 
+        # Mediana numerica
+        if getattr(self, '_use_median', False):
+            num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            self._median_cols = [c for c in num_cols if df[c].isnull().any()]
+            if self._median_cols:
+                self._median_imputer = SimpleImputer(strategy='median')
+                self._median_imputer.fit(df[self._median_cols])
+                print("\n--- FIT NUMERICI → MEDIANA ---")
+                for i, col in enumerate(self._median_cols):
+                    print(f"  {col:<30} mediana = {self._median_imputer.statistics_[i]:.2f}")
+ 
+        # 'unknown' è costante, nessun fit necessario
+        # se cols=None, ricaviamo le colonne dal train
+        if not self._unknown_cols:
+            cat_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
+            self._unknown_cols = [c for c in cat_cols if df[c].isnull().any()]
+ 
+        return self
+ 
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Applica le trasformazioni apprese. Usabile su train e test."""
+        df = df.copy()
+ 
+        if self._median_imputer and self._median_cols:
+            df[self._median_cols] = self._median_imputer.transform(df[self._median_cols])
+ 
+        for col in self._unknown_cols:
+            if col in df.columns:
+                df[col] = df[col].fillna('unknown')
+ 
+        return df
+ 
+    def fit_transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Fit + transform in un colpo solo — usa solo su X_train."""
+        return self.fit(df).transform(df)
+ 
     # ------------------------------------------------------------------ #
     #  Report                                                              #
     # ------------------------------------------------------------------ #
-
-    def report(self) -> None:
+ 
+    def report(self, df: pd.DataFrame) -> None:
         print(f"\n{'='*45}")
         print("  STATO VALORI MANCANTI")
         print(f"{'='*45}")
-        missing = self.df.isnull().sum()
+        missing = df.isnull().sum()
         missing = missing[missing > 0]
         if missing.empty:
             print("  Nessun valore mancante rimasto.")
         else:
             for col, count in missing.items():
-                pct = count / len(self.df) * 100
+                pct = count / len(df) * 100
                 print(f"  {col:<30} {count:>5} ({pct:.1f}%)")
         print(f"{'='*45}\n")
-
-    def get_clean_df(self) -> pd.DataFrame:
-        return self.df
