@@ -30,8 +30,6 @@ class DataLoader:
         self.drop_missing_thresh = drop_missing_thresh
 
         self.df = None
-        self.X = None
-        self.y = None
 
     def load(self) -> pd.DataFrame:
         dataset = fetch_ucirepo(id=self.dataset_id)
@@ -60,25 +58,25 @@ class DataLoader:
             if dropped:
                 print(f"[DataLoader] Colonne droppate (>{self.drop_missing_thresh*100:.0f}% NaN): {dropped}")
 
-        self.X = self.df.drop(columns=[self.target_col])
-        self.y = self.df[self.target_col]
-
         return self.df
 
     def info(self) -> None:
         print(f"\n{'='*45}")
         print(f"  DATASET UCI  —  id={self.dataset_id}")
         print(f"{'='*45}")
+        X = self.df.drop(columns=[self.target_col])
+        y = self.df[self.target_col]
+
         print(f"  Righe      : {len(self.df)}")
         print(f"  Colonne    : {len(self.df.columns)}")
-        print(f"  Features   : {len(self.X.columns)}")
+        print(f"  Features   : {len(X.columns)}")
 
-        num = self.X.select_dtypes(include='number').columns.tolist()
-        cat = self.X.select_dtypes(exclude='number').columns.tolist()
+        num = X.select_dtypes(include='number').columns.tolist()
+        cat = X.select_dtypes(exclude='number').columns.tolist()
         print(f"  Numeriche  : {len(num)}")
         print(f"  Categoriali: {len(cat)}")
         print(f"\n  Target: '{self.target_col}'")
-        print(self.y.value_counts().to_string())
+        print(y.value_counts().to_string())
         print(f"{'='*45}\n")
 
     def report_missing(self) -> None:

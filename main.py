@@ -5,6 +5,7 @@ from src.split import Split
 from src.eda import Eda
 from src.encoder import Encoder
 from src.model_xgboost import ModelXGBoost
+from src.logreg import Logreg
 
 
 def main():
@@ -46,30 +47,32 @@ def main():
     print(f"Train pulito: {X_train.shape[0]} righe, {X_train.shape[1]} colonne")
     print(f"Test pulito:  {X_test.shape[0]} righe, {X_test.shape[1]} colonne")
 
-    # --- ENCODING FEATURES ---
-    print("\n>>> ENCODING FEATURES")
+    # --- ENCODING (fit SOLO su train, transform su entrambi) ---
+    print("\n>>> ENCODING")
     cat_cols = X_train.select_dtypes(exclude='number').columns.tolist()
 
     encoder = Encoder()
-    X_train = encoder.fit_transform_features(X_train, cat_cols)
-    X_test  = encoder.transform_features(X_test)
+    X_train = encoder.fit_transform_features(X_train, cat_cols)  # fit + transform
+    X_test  = encoder.transform_features(X_test)                 # solo transform
+
+    y_train = encoder.encode_target(y_train, fit=True)   # fit + transform
+    y_test  = encoder.encode_target(y_test,  fit=False)  # solo transform
 
     print(f"Train encoded: {X_train.shape[0]} righe, {X_train.shape[1]} colonne")
     print(f"Test encoded:  {X_test.shape[0]} righe, {X_test.shape[1]} colonne")
 
-    # --- ENCODING TARGET ---
-    print("\n>>> ENCODING TARGET")
-    encoder_y = Encoder()
-    y_train = encoder_y.encode_target(y_train, fit=True)
-    y_test  = encoder_y.encode_target(y_test, fit=False)
-    print(f"  y_train: {y_train[:5]}  (esempio)")
-    print(f"  y_test:  {y_test[:5]}   (esempio)")
-
-    # --- MODELLO ---
+    # --- MODELLO XGBOOST ---
     print("\n>>> TRAINING XGBOOST")
-    model = ModelXGBoost()
-    model.train(X_train, y_train)
-    model.evaluate(X_test, y_test)
+    xgb_model = ModelXGBoost()
+    xgb_model.train(X_train, y_train)
+    xgb_model.evaluate(X_test, y_test)
+
+    # --- MODELLO LOGISTIC REGRESSION ---
+    print("\n>>> TRAINING LOGISTIC REGRESSION")
+    logreg = Logreg()
+    logreg.train(X_train, y_train)
+    print(logreg.evaluate(X_test, y_test))
+    print(logreg.classification_report(X_test, y_test))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ class DataCleaner:
     """
  
     def __init__(self):
+        self._use_median = False
         self._median_imputer = None   # SimpleImputer fittato sul train
         self._median_cols = []        # colonne numeriche con mancanti
         self._unknown_cols = []       # colonne categoriali da riempire con 'unknown'
@@ -30,7 +31,7 @@ class DataCleaner:
         Registra: sostituisce NaN con 'unknown'.
         Se cols=None lo applica a tutte le categoriali con mancanti.
         """
-        self._unknown_cols = cols or []
+        self._unknown_cols = cols if cols is not None else []
         return self
  
     # ------------------------------------------------------------------ #
@@ -41,7 +42,7 @@ class DataCleaner:
         """Impara le statistiche SOLO dal train set."""
  
         # Mediana numerica
-        if getattr(self, '_use_median', False):
+        if self._use_median:
             num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
             self._median_cols = [c for c in num_cols if df[c].isnull().any()]
             if self._median_cols:
