@@ -1,21 +1,23 @@
 from flask import Blueprint, request, jsonify
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from src.model_xgboost import ModelXGBoost
-from routes.state import pipeline
+from routes.state import pipeline, pipeline_lock
 
 xgboost_bp = Blueprint('xgboost', __name__, url_prefix='/xgboost')
 
 
 @xgboost_bp.route('/train', methods=['POST'])
 def train():
-    X_train = pipeline['X_train']
-    y_train = pipeline['y_train']
+    with pipeline_lock:
+        X_train = pipeline['X_train']
+        y_train = pipeline['y_train']
     if X_train is None or y_train is None:
         return jsonify({'error': 'Dati non disponibili. Completare prima il pipeline di encoding'}), 400
 
     model = ModelXGBoost()
-    model.train(X_train, y_train)
-    pipeline['xgboost'] = model
+    model.train(X_train, y_train)  # training fuori dal lock
+    with pipeline_lock:
+        pipeline['xgboost'] = model
 
     return jsonify({'status': 'ok', 'best_params': model.best_params})
 

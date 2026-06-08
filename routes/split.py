@@ -1,13 +1,14 @@
 from flask import Blueprint, jsonify
 from src.split import Split
-from routes.state import pipeline
+from routes.state import pipeline, pipeline_lock
 
 split_bp = Blueprint('split', __name__, url_prefix='/split')
 
 
 @split_bp.route('/split', methods=['POST'])
 def split():
-    dl = pipeline['loader']
+    with pipeline_lock:
+        dl = pipeline['loader']
     if dl is None:
         return jsonify({'error': 'Dataset non caricato. Chiamare prima POST /loader/load'}), 400
 
@@ -15,12 +16,13 @@ def split():
     y = dl.df[dl.target_col]
 
     splitter = Split()
-    X_train, X_test, y_train, y_test = splitter.split(X, y)
+    X_train, X_test, y_train, y_test = splitter.split(X, y)  # computazione fuori dal lock
 
-    pipeline['X_train'] = X_train
-    pipeline['X_test'] = X_test
-    pipeline['y_train'] = y_train
-    pipeline['y_test'] = y_test
+    with pipeline_lock:
+        pipeline['X_train'] = X_train
+        pipeline['X_test'] = X_test
+        pipeline['y_train'] = y_train
+        pipeline['y_test'] = y_test
 
     return jsonify({
         'status': 'ok',

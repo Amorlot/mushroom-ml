@@ -1,21 +1,23 @@
 from flask import Blueprint, request, jsonify
 from src.logreg import Logreg
-from routes.state import pipeline
+from routes.state import pipeline, pipeline_lock
 
 logreg_bp = Blueprint('logreg', __name__, url_prefix='/logreg')
 
 
 @logreg_bp.route('/train', methods=['POST'])
 def train():
-    X_train = pipeline['X_train']
-    y_train = pipeline['y_train']
+    with pipeline_lock:
+        X_train = pipeline['X_train']
+        y_train = pipeline['y_train']
     if X_train is None or y_train is None:
         return jsonify({'error': 'Dati non disponibili. Completare prima il pipeline di encoding'}), 400
 
     body = request.get_json() or {}
     model = Logreg()
-    model.train(X_train, y_train, cv=body.get('cv', 5), scoring=body.get('scoring', 'f1_weighted'))
-    pipeline['logreg'] = model
+    model.train(X_train, y_train, cv=body.get('cv', 5), scoring=body.get('scoring', 'f1_weighted'))  # training fuori dal lock
+    with pipeline_lock:
+        pipeline['logreg'] = model
 
     return jsonify({'status': 'ok', 'best_params': model.best_params})
 

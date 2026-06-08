@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from src.data_loader import DataLoader
-from routes.state import pipeline
+from routes.state import pipeline, pipeline_lock
 
 loader_bp = Blueprint('loader', __name__, url_prefix='/loader')
 
@@ -14,8 +14,9 @@ def load():
         drop_cols=body.get('drop_cols', ['veil-type']),
         drop_missing_thresh=body.get('drop_missing_thresh', None),
     )
-    dl.load()
-    pipeline['loader'] = dl
+    dl.load()  # rete/IO fuori dal lock
+    with pipeline_lock:
+        pipeline['loader'] = dl
     return jsonify({
         'status': 'ok',
         'rows': len(dl.df),

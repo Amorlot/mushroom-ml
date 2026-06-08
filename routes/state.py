@@ -1,3 +1,5 @@
+import threading
+
 pipeline = {
     'loader':   None,
     'cleaner':  None,
@@ -9,3 +11,5 @@ pipeline = {
     'y_train':  None,
     'y_test':   None,
 }
+
+pipeline_lock = threading.Lock()

@@ -1,13 +1,15 @@
 from flask import Blueprint, request, jsonify
 from src.data_cleaner import DataCleaner
-from routes.state import pipeline
+from routes.state import pipeline, pipeline_lock
 
 cleaner_bp = Blueprint('cleaner', __name__, url_prefix='/cleaner')
 
 
 @cleaner_bp.route('/configure', methods=['POST'])
 def configure():
-    if pipeline['X_train'] is None:
+    with pipeline_lock:
+        X_train = pipeline['X_train']
+    if X_train is None:
         return jsonify({'error': 'Dati non splittati. Chiamare prima POST /split/split'}), 400
 
     body = request.get_json() or {}
@@ -19,30 +21,37 @@ def configure():
     unknown_cols = body.get('unknown_cols', None)
     cleaner.fix_missing_categorical_unknown(cols=unknown_cols)
 
-    pipeline['cleaner'] = cleaner
+    with pipeline_lock:
+        pipeline['cleaner'] = cleaner
     return jsonify({'status': 'configured'})
 
 
 @cleaner_bp.route('/fit_transform', methods=['POST'])
 def fit_transform():
-    cleaner = pipeline['cleaner']
-    X_train = pipeline['X_train']
+    with pipeline_lock:
+        cleaner = pipeline['cleaner']
+        X_train = pipeline['X_train']
     if cleaner is None or X_train is None:
         return jsonify({'error': 'Chiamare prima POST /cleaner/configure'}), 400
 
-    pipeline['X_train'] = cleaner.fit_transform(X_train)
-    return jsonify({'status': 'ok', 'shape': list(pipeline['X_train'].shape)})
+    X_train_cleaned = cleaner.fit_transform(X_train)  # computazione fuori dal lock
+    with pipeline_lock:
+        pipeline['X_train'] = X_train_cleaned
+    return jsonify({'status': 'ok', 'shape': list(X_train_cleaned.shape)})
 
 
 @cleaner_bp.route('/transform', methods=['POST'])
 def transform():
-    cleaner = pipeline['cleaner']
-    X_test = pipeline['X_test']
+    with pipeline_lock:
+        cleaner = pipeline['cleaner']
+        X_test = pipeline['X_test']
     if cleaner is None or X_test is None:
         return jsonify({'error': 'Chiamare prima POST /cleaner/fit_transform'}), 400
 
-    pipeline['X_test'] = cleaner.transform(X_test)
-    return jsonify({'status': 'ok', 'shape': list(pipeline['X_test'].shape)})
+    X_test_cleaned = cleaner.transform(X_test)  # computazione fuori dal lock
+    with pipeline_lock:
+        pipeline['X_test'] = X_test_cleaned
+    return jsonify({'status': 'ok', 'shape': list(X_test_cleaned.shape)})
 
 
 @cleaner_bp.route('/report', methods=['GET'])
