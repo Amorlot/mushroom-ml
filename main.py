@@ -1,11 +1,5 @@
 # main.py
-from src.data_loader import DataLoader
-from src.data_cleaner import DataCleaner
-from src.split import Split
-from src.eda import Eda
-from src.encoder import Encoder
-from src.model_xgboost import ModelXGBoost
-from src.logreg import Logreg
+from src import DataLoader, DataCleaner, Split, Eda, Encoder, ModelXGBoost, Logreg
 
 
 def main():
@@ -14,7 +8,7 @@ def main():
     dl = DataLoader(
         dataset_id=73,
         target_col='poisonous',
-        drop_cols=['veil-type']
+        # drop_missing_thresh non passato → None → saltato
     )
     dl.load()
     dl.info()
@@ -37,7 +31,7 @@ def main():
     # --- PULIZIA (fit SOLO su train, transform su entrambi) ---
     print("\n>>> PULIZIA DATI")
     cleaner = DataCleaner()
-    cleaner.fix_missing_categorical_unknown(cols=['stalk-root'])
+    cleaner.drop_cols(['veil-type']).fix_missing_categorical_unknown(cols=['stalk-root'])
 
     X_train = cleaner.fit_transform(X_train)
     X_test  = cleaner.transform(X_test)

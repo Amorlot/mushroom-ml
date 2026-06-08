@@ -16,11 +16,17 @@ class DataCleaner:
         self._median_imputer = None   # SimpleImputer fittato sul train
         self._median_cols = []        # colonne numeriche con mancanti
         self._unknown_cols = []       # colonne categoriali da riempire con 'unknown'
+        self._drop_cols = []          # colonne da eliminare (scelte dopo EDA)
  
     # ------------------------------------------------------------------ #
     #  Configurazione (chainable)                                          #
     # ------------------------------------------------------------------ #
  
+    def drop_cols(self, cols: list) -> "DataCleaner":
+        """Registra colonne da eliminare (da chiamare dopo EDA)."""
+        self._drop_cols = cols
+        return self
+
     def fix_missing_numerical_median(self) -> "DataCleaner":
         """Registra: imputa i numerici con la mediana del train."""
         self._use_median = True
@@ -63,10 +69,14 @@ class DataCleaner:
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Applica le trasformazioni apprese. Usabile su train e test."""
         df = df.copy()
- 
+
+        cols_to_drop = [c for c in self._drop_cols if c in df.columns]
+        if cols_to_drop:
+            df.drop(columns=cols_to_drop, inplace=True)
+
         if self._median_imputer and self._median_cols:
             df[self._median_cols] = self._median_imputer.transform(df[self._median_cols])
- 
+
         for col in self._unknown_cols:
             if col in df.columns:
                 df[col] = df[col].fillna('unknown')

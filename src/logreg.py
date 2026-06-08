@@ -1,3 +1,5 @@
+import numpy as np
+import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import (
@@ -71,3 +73,18 @@ class Logreg:
 
         predictions = self.model.predict(X_test)
         return classification_report(y_test, predictions)
+
+    def coefficients(self, feature_names: list = None) -> pd.DataFrame:
+        """Restituisce coefficienti e odds ratio ordinati per |coeff| decrescente."""
+        if self.model is None:
+            raise ValueError("Eseguire prima train().")
+
+        coef = self.model.coef_[0]
+        names = feature_names if feature_names is not None else [f"x{i}" for i in range(len(coef))]
+
+        df = pd.DataFrame({
+            "feature":     names,
+            "coefficient": coef,
+            "odds_ratio":  np.exp(coef),
+        })
+        return df.reindex(df["coefficient"].abs().sort_values(ascending=False).index).reset_index(drop=True)

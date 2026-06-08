@@ -21,12 +21,10 @@ class DataLoader:
         self,
         dataset_id: int,
         target_col: str,
-        drop_cols: list = None,
         drop_missing_thresh: float = None,
     ):
         self.dataset_id = dataset_id
         self.target_col = target_col
-        self.drop_cols = drop_cols or []
         self.drop_missing_thresh = drop_missing_thresh
 
         self.df = None
@@ -45,10 +43,6 @@ class DataLoader:
             regex=True,
             inplace=True
         )
-
-        if self.drop_cols:
-            cols = [c for c in self.drop_cols if c in self.df.columns]
-            self.df.drop(columns=cols, inplace=True)
 
         if self.drop_missing_thresh is not None:
             thresh = int((1 - self.drop_missing_thresh) * len(self.df))
