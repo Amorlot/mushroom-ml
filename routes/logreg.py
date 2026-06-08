@@ -24,9 +24,10 @@ def train():
 
 @logreg_bp.route('/evaluate', methods=['GET'])
 def evaluate():
-    model = pipeline['logreg']
-    X_test = pipeline['X_test']
-    y_test = pipeline['y_test']
+    with pipeline_lock:
+        model  = pipeline['logreg']
+        X_test = pipeline['X_test']
+        y_test = pipeline['y_test']
     if model is None or X_test is None or y_test is None:
         return jsonify({'error': 'Eseguire prima POST /logreg/train'}), 400
 
@@ -35,9 +36,10 @@ def evaluate():
 
 @logreg_bp.route('/classification_report', methods=['GET'])
 def classification_report():
-    model = pipeline['logreg']
-    X_test = pipeline['X_test']
-    y_test = pipeline['y_test']
+    with pipeline_lock:
+        model  = pipeline['logreg']
+        X_test = pipeline['X_test']
+        y_test = pipeline['y_test']
     if model is None or X_test is None or y_test is None:
         return jsonify({'error': 'Eseguire prima POST /logreg/train'}), 400
 

@@ -68,6 +68,13 @@ def main():
     print(logreg.evaluate(X_test, y_test))
     print(logreg.classification_report(X_test, y_test))
 
+        # --- COEFFICIENTI LOGISTIC REGRESSION ---
+    print("\n>>> COEFFICIENTI LOGISTIC REGRESSION")
+    feature_names = X_train.columns.tolist()
+    coef_df = logreg.coefficients(feature_names)
+    print(coef_df.head(20).to_string(index=False))  # top 20 feature più importanti
+
+
 
 if __name__ == "__main__":
     main()

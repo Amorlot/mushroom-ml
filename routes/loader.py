@@ -11,7 +11,6 @@ def load():
     dl = DataLoader(
         dataset_id=body.get('dataset_id', 73),
         target_col=body.get('target_col', 'poisonous'),
-        drop_cols=body.get('drop_cols', ['veil-type']),
         drop_missing_thresh=body.get('drop_missing_thresh', None),
     )
     dl.load()  # rete/IO fuori dal lock

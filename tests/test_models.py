@@ -1,16 +1,14 @@
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
-from src.data_loader import DataLoader
-from src.logreg import Logreg
+from src import DataLoader, Logreg
 
 
 def test_data_loader():
     dl = DataLoader(
         dataset_id=73,
         target_col='poisonous',
-        drop_cols=['veil-type'],
-        drop_missing_thresh=0.5
+        drop_missing_thresh=0.5,
     )
     dl.load()
     dl.info()
@@ -18,7 +16,6 @@ def test_data_loader():
 
     assert dl.df is not None
     assert len(dl.df) == 8124
-    assert 'veil-type' not in dl.df.columns
     assert 'poisonous' in dl.df.columns
 
     print("\nTest DataLoader passati!")
@@ -31,7 +28,6 @@ def test_logreg():
     )
 
     model = Logreg()
-
     model.train(X_train, y_train)
     assert model.model is not None
     assert model.best_params is not None

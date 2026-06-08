@@ -1,12 +1,12 @@
 import math
 import os
 import matplotlib.pyplot as plt
-import numpy as np  
-from sklearn.linear_model import LinearRegression  
-import pandas as pd  
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import pandas as pd
 import seaborn as sns
 from scipy import stats
-from scipy.stats import jarque_bera, normaltest
+from scipy.stats import jarque_bera, normaltest, chi2_contingency
 
 
 class Eda:
@@ -112,7 +112,8 @@ class Eda:
 
         plt.title("Correlation Matrix", fontsize=16)
         plt.tight_layout()
-        plt.show()
+        plt.savefig(f'{self.output_dir}/corrplot.png')
+        plt.close()
 
     def tolerance(self):
 
@@ -140,4 +141,30 @@ class Eda:
             })
 
         return pd.DataFrame(results).sort_values("VIF", ascending=False)
+
+    def frequency_table(self, colonna: str) -> pd.DataFrame:
+        """Frequenze assolute e relative per una variabile categoriale."""
+        counts = self.df[colonna].value_counts(dropna=False)
+        return pd.DataFrame({
+            'valore':    counts.index,
+            'frequenza': counts.values,
+            'pct':       (counts.values / len(self.df) * 100).round(2),
+        })
+
+    def chi_square(self, col1: str, col2: str) -> dict:
+        """Chi-quadro e Cramér's V tra due variabili categoriali."""
+        contingency = pd.crosstab(self.df[col1], self.df[col2])
+        chi2, p, dof, _ = chi2_contingency(contingency)
+        n = contingency.values.sum()
+        k = min(contingency.shape) - 1
+        cramers_v = float(np.sqrt(chi2 / (n * k))) if k > 0 else 0.0
+        return {
+            'col1':      col1,
+            'col2':      col2,
+            'chi2':      round(float(chi2), 4),
+            'p_value':   round(float(p), 10),
+            'dof':       int(dof),
+            'cramers_v': round(cramers_v, 4),
+            'associati': bool(p < 0.05),
+        }
 

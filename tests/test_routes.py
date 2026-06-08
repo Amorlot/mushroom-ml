@@ -29,25 +29,25 @@ def test_eda_info_senza_load(client):
     assert client.get('/eda/info').status_code == 400
 
 def test_split_senza_load(client):
-    assert client.post('/split/split').status_code == 400
+    assert client.post('/split/split', json={}).status_code == 400
 
 def test_cleaner_configure_senza_split(client):
     assert client.post('/cleaner/configure', json={}).status_code == 400
 
 def test_cleaner_fit_transform_senza_configure(client):
-    assert client.post('/cleaner/fit_transform').status_code == 400
+    assert client.post('/cleaner/fit_transform', json={}).status_code == 400
 
 def test_cleaner_transform_senza_fit(client):
-    assert client.post('/cleaner/transform').status_code == 400
+    assert client.post('/cleaner/transform', json={}).status_code == 400
 
 def test_encoder_fit_senza_dati(client):
-    assert client.post('/encoder/fit_transform_features').status_code == 400
+    assert client.post('/encoder/fit_transform_features', json={}).status_code == 400
 
 def test_encoder_transform_senza_fit(client):
-    assert client.post('/encoder/transform_features').status_code == 400
+    assert client.post('/encoder/transform_features', json={}).status_code == 400
 
 def test_encoder_encode_target_senza_fit(client):
-    assert client.post('/encoder/encode_target').status_code == 400
+    assert client.post('/encoder/encode_target', json={}).status_code == 400
 
 def test_logreg_train_senza_dati(client):
     assert client.post('/logreg/train', json={}).status_code == 400
@@ -73,7 +73,6 @@ def test_pipeline_completo_logreg(client):
     r = client.post('/loader/load', json={
         'dataset_id': 73,
         'target_col': 'poisonous',
-        'drop_cols': ['veil-type'],
     })
     assert r.status_code == 200
     assert r.get_json()['rows'] == 8124
@@ -88,7 +87,7 @@ def test_pipeline_completo_logreg(client):
     assert 'variabili' in r.get_json()
 
     # 4. Split
-    r = client.post('/split/split')
+    r = client.post('/split/split', json={})
     assert r.status_code == 200
     data = r.get_json()
     assert data['train_rows'] == 6499
@@ -97,15 +96,15 @@ def test_pipeline_completo_logreg(client):
     # 5. Cleaner
     r = client.post('/cleaner/configure', json={'unknown_cols': ['stalk-root']})
     assert r.status_code == 200
-    assert client.post('/cleaner/fit_transform').status_code == 200
-    assert client.post('/cleaner/transform').status_code == 200
+    assert client.post('/cleaner/fit_transform', json={}).status_code == 200
+    assert client.post('/cleaner/transform', json={}).status_code == 200
     r = client.get('/cleaner/report')
     assert r.status_code == 200
 
     # 6. Encoder
-    assert client.post('/encoder/fit_transform_features').status_code == 200
-    assert client.post('/encoder/transform_features').status_code == 200
-    assert client.post('/encoder/encode_target').status_code == 200
+    assert client.post('/encoder/fit_transform_features', json={}).status_code == 200
+    assert client.post('/encoder/transform_features', json={}).status_code == 200
+    assert client.post('/encoder/encode_target', json={}).status_code == 200
 
     # 7. Logreg (cv=2 per velocizzare il test)
     r = client.post('/logreg/train', json={'cv': 2})
